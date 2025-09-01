@@ -20,4 +20,17 @@ public class Request {
         return query != null ? URLDecoder.decode(query, StandardCharsets.UTF_8) : null;
     }
 
+    public String getQueryParam(String key) {
+        if (query == null) return null;
+        String[] pairs = query.split("&");
+        for (String pair : pairs) {
+            String[] kv = pair.split("=", 2);
+            if (kv.length == 2 && kv[0].equals(key)) {
+                return URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
+            }
+        }
+        return null;
+    }
+
+
 }

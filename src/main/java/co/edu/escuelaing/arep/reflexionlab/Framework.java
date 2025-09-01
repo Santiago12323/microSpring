@@ -1,6 +1,7 @@
 package co.edu.escuelaing.arep.reflexionlab;
 
 import co.edu.escuelaing.arep.reflexionlab.Anotations.GetMapping;
+import co.edu.escuelaing.arep.reflexionlab.Anotations.RequestParam;
 import co.edu.escuelaing.arep.reflexionlab.Anotations.RestController;
 import co.edu.escuelaing.arep.reflexionlab.util.HtmlFetcher;
 import co.edu.escuelaing.arep.reflexionlab.util.Request;
@@ -47,22 +48,43 @@ public class Framework {
 
                         Service service = (request, response) -> {
                             try {
-                                Object result;
+                                Object[] params = new Object[method.getParameterCount()];
+                                var methodParams = method.getParameters();
 
-                                if (method.getParameterCount() == 0) {
-                                    result = method.invoke(controllerInstance);
-                                } else {
-                                    result = method.invoke(controllerInstance, request.getQuery());
+                                for (int i = 0; i < methodParams.length; i++) {
+                                    var param = methodParams[i];
+
+                                    if (param.isAnnotationPresent(RequestParam.class)) {
+                                        RequestParam annotation = param.getAnnotation(RequestParam.class);
+                                        String key = annotation.value();
+                                        String defaultValue = annotation.defaultValue();
+
+                                        System.out.println("metodo " + method.getName());
+                                        System.out.println("value " + param.getName());
+                                        System.out.println("default " + defaultValue);
+
+
+
+                                        String value = request.getQueryParam(key);
+
+                                        if (value == null || value.isEmpty()) {
+                                            value = defaultValue;
+                                        }
+
+                                        params[i] = value;
+                                    } else {
+                                        params[i] = null;
+                                    }
                                 }
 
-                                return result.toString();
+                                Object result = method.invoke(controllerInstance, params);
+                                return result != null ? result.toString() : "";
                             } catch (Exception e) {
                                 e.printStackTrace();
                                 response.setStatusCode(500);
                                 return "Internal Server Error";
                             }
                         };
-
                         services.put(path, service);
 
                         System.out.println("Ruta cargada: " + path + " -> " + method.getName());
@@ -95,18 +117,16 @@ public class Framework {
 
             String query = fullPath.contains("?") ? fullPath.split("\\?", 2)[1] : null;
 
-            String param = null;
-            if (query != null) {
-                String[] parts = query.split("=", 2);
-                if (parts.length == 2) {
-                    param = URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
-                }
+            String queryString = null;
+            if (fullPath.contains("?")) {
+                queryString = fullPath.split("\\?", 2)[1];
             }
+
 
             Request req = Request.builder()
                     .method("GET")
                     .path(path)
-                    .query(param)
+                    .query(queryString)
                     .build();
 
             Service svc = services.get(path);
