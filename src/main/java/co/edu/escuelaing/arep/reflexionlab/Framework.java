@@ -16,12 +16,17 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Framework {
     private static final Map<String, Service> services = new HashMap<>();
     private static HtmlFetcher htmlFetcher = new HtmlFetcher();
 
     private static Object controllerInstance;
+    private static final int THREAD_POOL_SIZE = 10;
+    private static final ExecutorService executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+
 
 
     public static void start() throws IOException {
@@ -30,13 +35,13 @@ public class Framework {
         System.out.println("Server started at port " + port);
         while (true) {
             Socket clientSocket = serverSocket.accept();
-            handle(clientSocket);
+            executor.submit(() -> handle(clientSocket));
         }
     }
 
-    public static void loadComponents(String[] args) {
+    public static void loadComponents() {
         try {
-            Class<?> controllerClass = Class.forName(args[0]);
+            Class<?> controllerClass = Class.forName("co.edu.escuelaing.arep.reflexionlab.controller.Controller");
 
             if (controllerClass.isAnnotationPresent(RestController.class)) {
                 controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
@@ -95,7 +100,7 @@ public class Framework {
             }
 
         } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Clase no encontrada: " + args[0], e);
+            throw new RuntimeException("Clase no encontrada: ", e);
         } catch (Exception e) {
             throw new RuntimeException("Error cargando componentes", e);
         }
